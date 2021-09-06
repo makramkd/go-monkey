@@ -1,0 +1,29 @@
+package repl
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+
+	"github.com/makramkd/go-monkey/lexer"
+	"github.com/makramkd/go-monkey/token"
+)
+
+func Start(in io.Reader, out io.Writer) {
+	scanner := bufio.NewScanner(in)
+
+	for {
+		fmt.Print(">> ")
+		scanned := scanner.Scan()
+		if !scanned {
+			return
+		}
+
+		line := scanner.Text()
+		l := lexer.New(line)
+
+		for tok := l.NextToken(); tok.T != token.EOF; tok = l.NextToken() {
+			fmt.Printf("%+v\n", tok)
+		}
+	}
+}
