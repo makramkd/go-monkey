@@ -1,9 +1,14 @@
 package ast
 
-import "github.com/makramkd/go-monkey/token"
+import (
+	"strings"
+
+	"github.com/makramkd/go-monkey/token"
+)
 
 type Node interface {
 	TokenLiteral() string
+	String() string
 }
 
 type Statement interface {
@@ -31,6 +36,16 @@ func (p *Program) TokenLiteral() string {
 	return ""
 }
 
+func (p *Program) String() string {
+	builder := strings.Builder{}
+
+	for _, s := range p.Statements {
+		builder.WriteString(s.String())
+	}
+
+	return builder.String()
+}
+
 type Identifier struct {
 	Token token.Token
 	Value string
@@ -41,6 +56,8 @@ func (i *Identifier) expressionNode() {}
 func (i *Identifier) TokenLiteral() string {
 	return i.Token.Literal
 }
+
+func (i *Identifier) String() string { return i.Value }
 
 // LetStatement represents a Monkey let statement.
 // e.g let a = b;
@@ -59,6 +76,21 @@ func (l *LetStatement) TokenLiteral() string {
 	return l.Token.Literal
 }
 
+func (l *LetStatement) String() string {
+	builder := strings.Builder{}
+	builder.WriteString(l.TokenLiteral() + " ")
+	builder.WriteString(l.Name.String())
+	builder.WriteString(" = ")
+
+	if l.Value != nil {
+		builder.WriteString(l.Value.String())
+	}
+
+	builder.WriteRune(';')
+
+	return builder.String()
+}
+
 type ReturnStatement struct {
 	Token       token.Token
 	ReturnValue Expression
@@ -68,4 +100,35 @@ func (r *ReturnStatement) statementNode() {}
 
 func (r *ReturnStatement) TokenLiteral() string {
 	return r.Token.Literal
+}
+
+func (r *ReturnStatement) String() string {
+	builder := strings.Builder{}
+	builder.WriteString(r.TokenLiteral() + " ")
+
+	if r.ReturnValue != nil {
+		builder.WriteString(r.ReturnValue.String())
+	}
+
+	builder.WriteRune(';')
+	return builder.String()
+}
+
+type ExpressionStatement struct {
+	// The first token of the expression
+	Token      token.Token
+	Expression Expression
+}
+
+func (e *ExpressionStatement) statementNode() {}
+
+func (e *ExpressionStatement) TokenLiteral() string {
+	return e.Token.Literal
+}
+
+func (e *ExpressionStatement) String() string {
+	if e.Expression != nil {
+		return e.Expression.String()
+	}
+	return ""
 }
