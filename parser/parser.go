@@ -8,16 +8,48 @@ import (
 	"github.com/makramkd/go-monkey/token"
 )
 
+// Pratt parsing main idea: association of parsing functions with token types.
+// Whenever this token type is encountered, the parsing functions are called to parse the
+// appropriate expression and return an AST node that represents it.
+// Each token type can have up to two parsing functions associated with it, depending
+// on whether the token is found in a prefix or infix position.
+// TODO: what about postfix?
+type prefixParseFunc func() ast.Expression
+type infixParseFunc func(ast.Expression) ast.Expression
+
+type operatorPrecedence int
+
+const (
+	_ operatorPrecedence = iota
+	LOWEST
+	EQUALS      // ==
+	LESSGREATER // >, >=, <, or <=
+	SUM         // + or -
+	PRODUCT     // * or /
+	PREFIX      // -X or !X
+	CALL        // function(X)
+)
+
 type Parser struct {
 	l *lexer.Lexer
 
 	curToken  token.Token
 	peekToken token.Token
 	errors    []error
+
+	prefixParseFuncs map[token.Type]prefixParseFunc
+	infixParseFuncs  map[token.Type]infixParseFunc
 }
 
 func New(l *lexer.Lexer) *Parser {
-	parser := &Parser{l: l, errors: []error{}}
+	parser := &Parser{
+		l:                l,
+		errors:           []error{},
+		prefixParseFuncs: map[token.Type]prefixParseFunc{},
+		infixParseFuncs:  map[token.Type]infixParseFunc{},
+	}
+
+	parser.registerPrefix(token.IDENT, parser.parseIdentifier)
 
 	// Read two tokens so that curToken and peekToken are set
 	parser.nextToken()
@@ -56,8 +88,22 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement()
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
+}
+
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{Token: p.curToken}
+
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	// Semicolons are optional here
+	// TODO: why?
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
 }
 
 func (p *Parser) parseLetStatement() *ast.LetStatement {
@@ -101,9 +147,17 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	return returnStmt
 }
 
-func (p *Parser) parseExpression() ast.Expression {
-	// stub
-	return nil
+func (p *Parser) parseExpression(precedence operatorPrecedence) ast.Expression {
+	prefix := p.prefixParseFuncs[p.curToken.T]
+	if prefix == nil {
+		return nil
+	}
+	leftExp := prefix()
+	return leftExp
+}
+
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
 func (p *Parser) expectPeek(t token.Type) bool {
@@ -127,4 +181,12 @@ func (p *Parser) peekError(t token.Type) {
 	p.errors = append(
 		p.errors,
 		fmt.Errorf("expected next token to be %s, got %s instead", t, p.peekToken.T))
+}
+
+func (p *Parser) registerPrefix(t token.Type, f prefixParseFunc) {
+	p.prefixParseFuncs[t] = f
+}
+
+func (p *Parser) registerInfix(t token.Type, f infixParseFunc) {
+	p.infixParseFuncs[t] = f
 }
