@@ -7,6 +7,7 @@ import (
 	"github.com/makramkd/go-monkey/ast"
 	"github.com/makramkd/go-monkey/lexer"
 	"github.com/makramkd/go-monkey/parser"
+	"github.com/makramkd/go-monkey/token"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,27 +16,52 @@ func TestLetStatements(t *testing.T) {
 let x = 5;
 let y = 10;
 let foobar = 838383;
+let helloWorld = 5 * 3 + 4;
 `
 	l := lexer.New(input)
 	p := parser.New(l)
 
 	program := p.ParseProgram()
 	assert.NotNil(t, program)
-	assert.Len(t, program.Statements, 3)
+	assert.Len(t, program.Statements, 4)
 	assert.Empty(t, p.Errors())
 
 	testCases := []struct {
 		expectedIdentifier string
-		expectedValue      string
+		expectedValue      ast.Expression
 	}{
-		{"x", "5"},
-		{"y", "10"},
-		{"foobar", "838383"},
+		{"x", &ast.IntegerLiteral{Token: token.New(token.INT, "5"), Value: int64(5)}},
+		{"y", &ast.IntegerLiteral{Token: token.New(token.INT, "10"), Value: int64(10)}},
+		{"foobar", &ast.IntegerLiteral{Token: token.New(token.INT, "838383"), Value: int64(838383)}},
+		{"helloWorld", &ast.InfixExpression{
+			Token: token.New(token.PLUS, "+"),
+			Left: &ast.InfixExpression{
+				Token: token.New(token.TIMES, "*"),
+				Left: &ast.IntegerLiteral{
+					Token: token.New(token.INT, "5"),
+					Value: int64(5),
+				},
+				Operator: "*",
+				Right: &ast.IntegerLiteral{
+					Token: token.New(token.INT, "3"),
+					Value: int64(3),
+				},
+			},
+			Operator: "+",
+			Right: &ast.IntegerLiteral{
+				Token: token.New(token.INT, "4"),
+				Value: int64(4),
+			},
+		},
+		},
 	}
 
 	for i, testCase := range testCases {
 		stmt := program.Statements[i]
 		testLetStatement(t, stmt, testCase.expectedIdentifier)
+		letStmt := stmt.(*ast.LetStatement)
+		assert.IsType(t, testCase.expectedValue, letStmt.Value)
+		assert.Equal(t, testCase.expectedValue, letStmt.Value)
 	}
 }
 

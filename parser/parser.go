@@ -99,10 +99,14 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 		return nil
 	}
 
-	// letStmt.Value = p.parseExpression()
-	// TODO: skipping expressions for now
-	for !p.curTokenIs(token.SEMICOLON) {
-		p.nextToken()
+	// Advance to the next token because the assignment operator doesn't
+	// have prefix or infix expression methods.
+	p.nextToken()
+
+	letStmt.Value = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.SEMICOLON) {
+		return nil
 	}
 
 	return letStmt
@@ -113,10 +117,11 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 		Token: p.curToken,
 	}
 
-	// returnStmt.ReturnValue = p.parseExpression()
-	// TODO: skipping expressions for now
-	for !p.curTokenIs(token.SEMICOLON) {
-		p.nextToken()
+	p.nextToken()
+	returnStmt.ReturnValue = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.SEMICOLON) {
+		return nil
 	}
 
 	return returnStmt
@@ -155,6 +160,19 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
 	if err != nil {
 		p.errors = append(p.errors, fmt.Errorf("could not parse %q as integer: %v", p.curToken.Literal, err))
+		return nil
+	}
+
+	lit.Value = value
+	return lit
+}
+
+func (p *Parser) parseBooleanLiteral() ast.Expression {
+	lit := &ast.BooleanLiteral{Token: p.curToken}
+
+	value, err := strconv.ParseBool(p.curToken.Literal)
+	if err != nil {
+		p.errors = append(p.errors, fmt.Errorf("could not parse %q as bool: %v", p.curToken.Literal, err))
 		return nil
 	}
 

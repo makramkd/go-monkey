@@ -55,6 +55,9 @@ var precedenceTable = map[token.Type]operatorPrecedence{
 func (p *Parser) registerPrefixes() {
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+	for _, tokType := range []token.Type{token.TRUE, token.FALSE} {
+		p.registerPrefix(tokType, p.parseBooleanLiteral)
+	}
 	for _, tokType := range []token.Type{token.BANG, token.MINUS, token.INCR_ONE, token.DECR_ONE} {
 		p.registerPrefix(tokType, p.parsePrefixExpression)
 	}
