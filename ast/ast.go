@@ -194,3 +194,91 @@ func (b *BooleanLiteral) expressionNode() {}
 func (b *BooleanLiteral) TokenLiteral() string { return b.Token.Literal }
 
 func (b *BooleanLiteral) String() string { return b.Token.Literal }
+
+type BlockStatement struct {
+	Token      token.Token // the '{' token
+	Statements []Statement
+}
+
+func (b *BlockStatement) statementNode()       {}
+func (b *BlockStatement) TokenLiteral() string { return b.Token.Literal }
+func (b *BlockStatement) String() string {
+	builder := strings.Builder{}
+	for _, stmt := range b.Statements {
+		builder.WriteString(stmt.String())
+	}
+	return builder.String()
+}
+
+type IfExpression struct {
+	Token       token.Token // the 'if' token
+	Condition   Expression
+	Consequence *BlockStatement
+	Alternative *BlockStatement
+}
+
+func (i *IfExpression) expressionNode() {}
+
+func (i *IfExpression) TokenLiteral() string { return i.Token.Literal }
+
+func (i *IfExpression) String() string {
+	builder := strings.Builder{}
+	builder.WriteString("if")
+	builder.WriteString(i.Condition.String())
+	builder.WriteString(" ")
+	builder.WriteString(i.Consequence.String())
+
+	if i.Alternative != nil {
+		builder.WriteString("else")
+		builder.WriteString(i.Alternative.String())
+	}
+
+	return builder.String()
+}
+
+type FunctionLiteral struct {
+	Token      token.Token // the 'fn' token
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (f *FunctionLiteral) expressionNode()      {}
+func (f *FunctionLiteral) TokenLiteral() string { return f.Token.Literal }
+func (f *FunctionLiteral) String() string {
+	builder := strings.Builder{}
+	builder.WriteString("fn")
+	builder.WriteRune('(')
+	for i, param := range f.Parameters {
+		builder.WriteString(param.String())
+		if i < len(f.Parameters)-1 {
+			builder.WriteRune(',')
+		}
+	}
+	builder.WriteRune(')')
+	builder.WriteRune('{')
+	builder.WriteString(f.Body.String())
+	builder.WriteRune('}')
+	return builder.String()
+}
+
+type CallExpression struct {
+	Token     token.Token // the '(' token
+	Function  Expression  // identifier or function literal
+	Arguments []Expression
+}
+
+func (c *CallExpression) expressionNode()      {}
+func (c *CallExpression) TokenLiteral() string { return c.Token.Literal }
+func (c *CallExpression) String() string {
+	builder := strings.Builder{}
+	builder.WriteString(c.Function.String())
+	builder.WriteRune('(')
+	for i, arg := range c.Arguments {
+		builder.WriteString(arg.String())
+		if i < len(c.Arguments)-1 {
+			builder.WriteRune(',')
+		}
+	}
+	builder.WriteRune(')')
+	return builder.String()
+}

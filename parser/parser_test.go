@@ -138,12 +138,14 @@ func TestIntegerLiteral(t *testing.T) {
 
 func TestPrefixExpressions(t *testing.T) {
 	testCases := []struct {
-		input        string
-		operator     string
-		integerValue int64
+		input    string
+		operator string
+		value    ast.Expression
 	}{
-		{"!5;", "!", 5},
-		{"-15;", "-", 15},
+		{"!5;", "!", &ast.IntegerLiteral{Token: token.New(token.INT, "5"), Value: int64(5)}},
+		{"-15;", "-", &ast.IntegerLiteral{Token: token.New(token.INT, "15"), Value: int64(15)}},
+		{"!true;", "!", &ast.BooleanLiteral{Token: token.New(token.TRUE, "true"), Value: true}},
+		{"!false;", "!", &ast.BooleanLiteral{Token: token.New(token.FALSE, "false"), Value: false}},
 	}
 
 	for _, testCase := range testCases {
@@ -157,7 +159,7 @@ func TestPrefixExpressions(t *testing.T) {
 		assert.IsType(t, &ast.PrefixExpression{}, stmt.Expression)
 		exp := stmt.Expression.(*ast.PrefixExpression)
 		assert.Equal(t, testCase.operator, exp.Operator)
-		testIntegerLiteral(t, exp.Right, testCase.integerValue)
+		assert.Equal(t, exp.Right, testCase.value)
 	}
 }
 
@@ -224,6 +226,11 @@ func TestPrecedence(t *testing.T) {
 		{"a * b / c", "((a * b) / c)"},
 		{`a % b / c`, `((a % b) / c)`},
 		{"a * b + c", "((a * b) + c)"},
+		{"a + (b + c)", "(a + (b + c))"},
+		{"!(true == true)", "(!(true == true))"},
+		{"-(5 + 5)", "(-(5 + 5))"},
+		{"a ** 2 * 2 + 1", "(((a ** 2) * 2) + 1)"},
+		{"a ** add(1, 2, 3) + 4", "((a ** add(1,2,3)) + 4)"},
 	}
 
 	for _, testCase := range testCases {
@@ -234,4 +241,195 @@ func TestPrecedence(t *testing.T) {
 		actual := program.String()
 		assert.Equal(t, testCase.expected, actual)
 	}
+}
+
+func TestIfExpression(t *testing.T) {
+	input := `if (x < y) { x + y; y - x; x**2; } else { x + y; }`
+
+	l := lexer.New(input)
+	p := parser.New(l)
+	program := p.ParseProgram()
+	assert.Empty(t, p.Errors())
+	assert.Len(t, program.Statements, 1)
+
+	assert.IsType(t, &ast.ExpressionStatement{}, program.Statements[0])
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	assert.IsType(t, &ast.IfExpression{}, stmt.Expression)
+	ifExp := stmt.Expression.(*ast.IfExpression)
+
+	expectedCondition := &ast.InfixExpression{
+		Token: token.New(token.LESS_THAN, "<"),
+		Left: &ast.Identifier{
+			Token: token.New(token.IDENT, "x"),
+			Value: "x",
+		},
+		Operator: "<",
+		Right: &ast.Identifier{
+			Token: token.New(token.IDENT, "y"),
+			Value: "y",
+		},
+	}
+
+	expectedConsequence := &ast.BlockStatement{
+		Token: token.New(token.LBRACE, "{"),
+		Statements: []ast.Statement{
+			&ast.ExpressionStatement{
+				Token: token.New(token.IDENT, "x"),
+				Expression: &ast.InfixExpression{
+					Token: token.New(token.PLUS, "+"),
+					Left: &ast.Identifier{
+						Token: token.New(token.IDENT, "x"),
+						Value: "x",
+					},
+					Operator: "+",
+					Right: &ast.Identifier{
+						Token: token.New(token.IDENT, "y"),
+						Value: "y",
+					},
+				},
+			},
+			&ast.ExpressionStatement{
+				Token: token.New(token.IDENT, "y"),
+				Expression: &ast.InfixExpression{
+					Token: token.New(token.MINUS, "-"),
+					Left: &ast.Identifier{
+						Token: token.New(token.IDENT, "y"),
+						Value: "y",
+					},
+					Operator: "-",
+					Right: &ast.Identifier{
+						Token: token.New(token.IDENT, "x"),
+						Value: "x",
+					},
+				},
+			},
+			&ast.ExpressionStatement{
+				Token: token.New(token.IDENT, "x"),
+				Expression: &ast.InfixExpression{
+					Token: token.New(token.POWER, "**"),
+					Left: &ast.Identifier{
+						Token: token.New(token.IDENT, "x"),
+						Value: "x",
+					},
+					Operator: "**",
+					Right: &ast.IntegerLiteral{
+						Token: token.New(token.INT, "2"),
+						Value: int64(2),
+					},
+				},
+			},
+		},
+	}
+
+	expectedAlternative := &ast.BlockStatement{
+		Token: token.New(token.LBRACE, "{"),
+		Statements: []ast.Statement{
+			&ast.ExpressionStatement{
+				Token: token.New(token.IDENT, "x"),
+				Expression: &ast.InfixExpression{
+					Token: token.New(token.PLUS, "+"),
+					Left: &ast.Identifier{
+						Token: token.New(token.IDENT, "x"),
+						Value: "x",
+					},
+					Operator: "+",
+					Right: &ast.Identifier{
+						Token: token.New(token.IDENT, "y"),
+						Value: "y",
+					},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, expectedCondition, ifExp.Condition)
+	assert.Equal(t, expectedConsequence, ifExp.Consequence)
+	assert.Equal(t, expectedAlternative, ifExp.Alternative)
+}
+
+func TestFunctionLiteral(t *testing.T) {
+	input := `fn (x, y) { return x + y; }`
+
+	l := lexer.New(input)
+	p := parser.New(l)
+	program := p.ParseProgram()
+	assert.Empty(t, p.Errors())
+	assert.Len(t, program.Statements, 1)
+	assert.IsType(t, &ast.ExpressionStatement{}, program.Statements[0])
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+	assert.IsType(t, &ast.FunctionLiteral{}, stmt.Expression)
+	fLit := stmt.Expression.(*ast.FunctionLiteral)
+
+	expectedParameters := []*ast.Identifier{
+		{
+			Token: token.New(token.IDENT, "x"),
+			Value: "x",
+		},
+		{
+			Token: token.New(token.IDENT, "y"),
+			Value: "y",
+		},
+	}
+
+	expectedBody := &ast.BlockStatement{
+		Token: token.New(token.LBRACE, "{"),
+		Statements: []ast.Statement{
+			&ast.ReturnStatement{
+				Token: token.New(token.RETURN, "return"),
+				ReturnValue: &ast.InfixExpression{
+					Token: token.New(token.PLUS, "+"),
+					Left: &ast.Identifier{
+						Token: token.New(token.IDENT, "x"),
+						Value: "x",
+					},
+					Operator: "+",
+					Right: &ast.Identifier{
+						Token: token.New(token.IDENT, "y"),
+						Value: "y",
+					},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, expectedParameters, fLit.Parameters)
+	assert.Equal(t, expectedBody, fLit.Body)
+}
+
+func TestCallExpression(t *testing.T) {
+	input := `add(1, 2, 3);`
+
+	l := lexer.New(input)
+	p := parser.New(l)
+	program := p.ParseProgram()
+	assert.Empty(t, p.Errors())
+	assert.Len(t, program.Statements, 1)
+
+	expectedCall := &ast.CallExpression{
+		Token: token.New(token.LPAREN, "("),
+		Function: &ast.Identifier{
+			Token: token.New(token.IDENT, "add"),
+			Value: "add",
+		},
+		Arguments: []ast.Expression{
+			&ast.IntegerLiteral{
+				Token: token.New(token.INT, "1"),
+				Value: int64(1),
+			},
+			&ast.IntegerLiteral{
+				Token: token.New(token.INT, "2"),
+				Value: int64(2),
+			},
+			&ast.IntegerLiteral{
+				Token: token.New(token.INT, "3"),
+				Value: int64(3),
+			},
+		},
+	}
+	expectedExprStmt := &ast.ExpressionStatement{
+		Token:      token.New(token.IDENT, "add"),
+		Expression: expectedCall,
+	}
+
+	assert.Equal(t, expectedExprStmt, program.Statements[0])
 }

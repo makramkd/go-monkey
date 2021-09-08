@@ -50,6 +50,8 @@ var precedenceTable = map[token.Type]operatorPrecedence{
 	token.REMAINDER: PRODUCT,
 
 	token.POWER: POWER,
+
+	token.LPAREN: CALL,
 }
 
 func (p *Parser) registerPrefixes() {
@@ -61,6 +63,9 @@ func (p *Parser) registerPrefixes() {
 	for _, tokType := range []token.Type{token.BANG, token.MINUS, token.INCR_ONE, token.DECR_ONE} {
 		p.registerPrefix(tokType, p.parsePrefixExpression)
 	}
+	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
+	p.registerPrefix(token.IF, p.parseIfExpression)
+	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 }
 
 func (p *Parser) registerInfixes() {
@@ -74,6 +79,7 @@ func (p *Parser) registerInfixes() {
 	for _, tokType := range infixOperators {
 		p.registerInfix(tokType, p.parseInfixExpression)
 	}
+	p.registerInfix(token.LPAREN, p.parseCallExpression)
 }
 
 func (p *Parser) nextToken() {
