@@ -2,32 +2,11 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/makramkd/go-monkey/ast"
 	"github.com/makramkd/go-monkey/lexer"
 	"github.com/makramkd/go-monkey/token"
-)
-
-// Pratt parsing main idea: association of parsing functions with token types.
-// Whenever this token type is encountered, the parsing functions are called to parse the
-// appropriate expression and return an AST node that represents it.
-// Each token type can have up to two parsing functions associated with it, depending
-// on whether the token is found in a prefix or infix position.
-// TODO: what about postfix?
-type prefixParseFunc func() ast.Expression
-type infixParseFunc func(ast.Expression) ast.Expression
-
-type operatorPrecedence int
-
-const (
-	_ operatorPrecedence = iota
-	LOWEST
-	EQUALS      // ==
-	LESSGREATER // >, >=, <, or <=
-	SUM         // + or -
-	PRODUCT     // * or /
-	PREFIX      // -X or !X
-	CALL        // function(X)
 )
 
 type Parser struct {
@@ -49,7 +28,8 @@ func New(l *lexer.Lexer) *Parser {
 		infixParseFuncs:  map[token.Type]infixParseFunc{},
 	}
 
-	parser.registerPrefix(token.IDENT, parser.parseIdentifier)
+	parser.registerPrefixes()
+	parser.registerInfixes()
 
 	// Read two tokens so that curToken and peekToken are set
 	parser.nextToken()
@@ -60,11 +40,6 @@ func New(l *lexer.Lexer) *Parser {
 
 func (p *Parser) Errors() []error {
 	return p.errors
-}
-
-func (p *Parser) nextToken() {
-	p.curToken = p.peekToken
-	p.peekToken = p.l.NextToken()
 }
 
 func (p *Parser) ParseProgram() *ast.Program {
@@ -150,9 +125,23 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 func (p *Parser) parseExpression(precedence operatorPrecedence) ast.Expression {
 	prefix := p.prefixParseFuncs[p.curToken.T]
 	if prefix == nil {
+		p.noPrefixParseFuncError(p.curToken.T)
 		return nil
 	}
+
 	leftExp := prefix()
+
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
+		infix := p.infixParseFuncs[p.peekToken.T]
+		if infix == nil {
+			return leftExp
+		}
+
+		p.nextToken()
+
+		leftExp = infix(leftExp)
+	}
+
 	return leftExp
 }
 
@@ -160,33 +149,40 @@ func (p *Parser) parseIdentifier() ast.Expression {
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
-func (p *Parser) expectPeek(t token.Type) bool {
-	if p.peekTokenIs(t) {
-		p.nextToken()
-		return true
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	lit := &ast.IntegerLiteral{Token: p.curToken}
+
+	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+	if err != nil {
+		p.errors = append(p.errors, fmt.Errorf("could not parse %q as integer: %v", p.curToken.Literal, err))
+		return nil
 	}
-	p.peekError(t)
-	return false
+
+	lit.Value = value
+	return lit
 }
 
-func (p *Parser) peekTokenIs(t token.Type) bool {
-	return p.peekToken.T == t
+func (p *Parser) parsePrefixExpression() ast.Expression {
+	exp := &ast.PrefixExpression{Token: p.curToken, Operator: p.curToken.Literal}
+
+	p.nextToken()
+
+	// Recursively parse the expression past the operator token
+	exp.Right = p.parseExpression(PREFIX)
+
+	return exp
 }
 
-func (p *Parser) curTokenIs(t token.Type) bool {
-	return p.curToken.T == t
-}
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	exp := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
 
-func (p *Parser) peekError(t token.Type) {
-	p.errors = append(
-		p.errors,
-		fmt.Errorf("expected next token to be %s, got %s instead", t, p.peekToken.T))
-}
+	precedence := p.curPrecedence()
+	p.nextToken()
+	exp.Right = p.parseExpression(precedence)
 
-func (p *Parser) registerPrefix(t token.Type, f prefixParseFunc) {
-	p.prefixParseFuncs[t] = f
-}
-
-func (p *Parser) registerInfix(t token.Type, f infixParseFunc) {
-	p.infixParseFuncs[t] = f
+	return exp
 }

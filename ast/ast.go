@@ -132,3 +132,54 @@ func (e *ExpressionStatement) String() string {
 	}
 	return ""
 }
+
+type IntegerLiteral struct {
+	Token token.Token
+	Value int64
+}
+
+func (i *IntegerLiteral) expressionNode()      {}
+func (i *IntegerLiteral) TokenLiteral() string { return i.Token.Literal }
+func (i *IntegerLiteral) String() string       { return i.Token.Literal }
+
+type PrefixExpression struct {
+	Token    token.Token // the prefix token, e.g ! or -
+	Operator string
+	Right    Expression
+}
+
+func (p *PrefixExpression) expressionNode() {}
+
+func (p *PrefixExpression) TokenLiteral() string {
+	return p.Token.Literal
+}
+
+func (p *PrefixExpression) String() string {
+	builder := strings.Builder{}
+	builder.WriteRune('(')
+	builder.WriteString(p.Operator)
+	builder.WriteString(p.Right.String())
+	builder.WriteRune(')')
+	return builder.String()
+}
+
+type InfixExpression struct {
+	Token    token.Token // the operator token
+	Left     Expression
+	Operator string
+	Right    Expression
+}
+
+func (i *InfixExpression) expressionNode() {}
+
+func (i *InfixExpression) TokenLiteral() string { return i.Token.Literal }
+
+func (i *InfixExpression) String() string {
+	builder := strings.Builder{}
+	builder.WriteRune('(')
+	builder.WriteString(i.Left.String() + " ")
+	builder.WriteString(i.Operator + " ")
+	builder.WriteString(i.Right.String())
+	builder.WriteRune(')')
+	return builder.String()
+}

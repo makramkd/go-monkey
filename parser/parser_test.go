@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/makramkd/go-monkey/ast"
@@ -89,4 +90,122 @@ func TestIdentifierExpression(t *testing.T) {
 
 	assert.Equal(t, "foobar", ident.Value)
 	assert.Equal(t, "foobar", ident.TokenLiteral())
+}
+
+func TestIntegerLiteral(t *testing.T) {
+	input := `5;`
+	l := lexer.New(input)
+	p := parser.New(l)
+	program := p.ParseProgram()
+	assert.Empty(t, p.Errors())
+	assert.Len(t, program.Statements, 1)
+	assert.IsType(t, &ast.ExpressionStatement{}, program.Statements[0])
+
+	stmt := program.Statements[0].(*ast.ExpressionStatement)
+
+	assert.IsType(t, &ast.IntegerLiteral{}, stmt.Expression)
+
+	literal := stmt.Expression.(*ast.IntegerLiteral)
+	assert.Equal(t, int64(5), literal.Value)
+	assert.Equal(t, "5", literal.TokenLiteral())
+}
+
+func TestPrefixExpressions(t *testing.T) {
+	testCases := []struct {
+		input        string
+		operator     string
+		integerValue int64
+	}{
+		{"!5;", "!", 5},
+		{"-15;", "-", 15},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		assert.Len(t, program.Statements, 1)
+		assert.IsType(t, &ast.ExpressionStatement{}, program.Statements[0])
+		stmt := program.Statements[0].(*ast.ExpressionStatement)
+		assert.IsType(t, &ast.PrefixExpression{}, stmt.Expression)
+		exp := stmt.Expression.(*ast.PrefixExpression)
+		assert.Equal(t, testCase.operator, exp.Operator)
+		testIntegerLiteral(t, exp.Right, testCase.integerValue)
+	}
+}
+
+func testIntegerLiteral(t *testing.T, right ast.Expression, value int64) {
+	assert.IsType(t, &ast.IntegerLiteral{}, right)
+	il := right.(*ast.IntegerLiteral)
+	assert.Equal(t, value, il.Value)
+	assert.Equal(t, fmt.Sprintf("%d", value), il.TokenLiteral())
+}
+
+func TestInfixExpressions(t *testing.T) {
+	testCases := []struct {
+		input      string
+		leftValue  int64
+		operator   string
+		rightValue int64
+	}{
+		{"5 + 5;", 5, "+", 5},
+		{"5 - 5;", 5, "-", 5},
+		{"5 * 5;", 5, "*", 5},
+		{"5 / 5;", 5, "/", 5},
+		{"5 > 5;", 5, ">", 5},
+		{"5 < 5;", 5, "<", 5},
+		{"5 >= 5;", 5, ">=", 5},
+		{"5 <= 5;", 5, "<=", 5},
+		{"5 % 5;", 5, "%", 5},
+		{"5 == 5;", 5, "==", 5},
+		{"5 != 5;", 5, "!=", 5},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		assert.Len(t, program.Statements, 1)
+
+		assert.IsType(t, &ast.ExpressionStatement{}, program.Statements[0])
+
+		stmt := program.Statements[0].(*ast.ExpressionStatement)
+
+		assert.IsType(t, &ast.InfixExpression{}, stmt.Expression)
+
+		exp := stmt.Expression.(*ast.InfixExpression)
+
+		testIntegerLiteral(t, exp.Left, testCase.leftValue)
+		assert.Equal(t, testCase.operator, exp.Operator)
+		testIntegerLiteral(t, exp.Right, testCase.rightValue)
+	}
+}
+
+func TestPrecedence(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"-a * b", "((-a) * b)"},
+		{"!-a", "(!(-a))"},
+		{"!++--a", "(!(++(--a)))"},
+		{"a + b + c", "((a + b) + c)"},
+		{"a + b - c", "((a + b) - c)"},
+		{"a * b * c", "((a * b) * c)"},
+		{"a / b / c", "((a / b) / c)"},
+		{"a * b / c", "((a * b) / c)"},
+		{`a % b / c`, `((a % b) / c)`},
+		{"a * b + c", "((a * b) + c)"},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		actual := program.String()
+		assert.Equal(t, testCase.expected, actual)
+	}
 }
