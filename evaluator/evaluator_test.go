@@ -89,3 +89,23 @@ func TestBangOperator(t *testing.T) {
 		assert.Equal(t, testCase.expected, boolValue.Value)
 	}
 }
+
+func TestIfExpressions(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected object.Object
+	}{
+		{"if (true) { 10 }", &object.Integer{Value: 10}},
+		{"if (true || false) { false }", &object.Boolean{Value: false}},
+		{"if (1 < 2 && (3 - 4) == -1) { 42 } else { 41 }", &object.Integer{Value: 42}},
+		{"if (false) { 41 } else { 42 }", &object.Integer{Value: 42}},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		val := evaluator.Eval(program)
+		assert.Equal(t, testCase.expected, val)
+	}
+}
