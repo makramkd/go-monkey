@@ -231,6 +231,8 @@ func TestPrecedence(t *testing.T) {
 		{"-(5 + 5)", "(-(5 + 5))"},
 		{"a ** 2 * 2 + 1", "(((a ** 2) * 2) + 1)"},
 		{"a ** add(1, 2, 3) + 4", "((a ** add(1,2,3)) + 4)"},
+		{"a && b || c", "((a && b) || c)"},
+		{"a || b && c", "(a || (b && c))"},
 	}
 
 	for _, testCase := range testCases {

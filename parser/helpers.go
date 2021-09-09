@@ -21,6 +21,8 @@ type operatorPrecedence int
 const (
 	_ operatorPrecedence = iota
 	LOWEST
+	OR          // ||
+	AND         // &&
 	EQUALS      // ==, !=
 	LESSGREATER // >, >=, <, or <=
 	SUM         // + or -
@@ -36,6 +38,9 @@ const (
 var precedenceTable = map[token.Type]operatorPrecedence{
 	token.EQUAL:     EQUALS,
 	token.NOT_EQUAL: EQUALS,
+
+	token.OR:  OR,
+	token.AND: AND,
 
 	token.LESS_THAN:    LESSGREATER,
 	token.GREATER_THAN: LESSGREATER,
@@ -71,6 +76,7 @@ func (p *Parser) registerPrefixes() {
 func (p *Parser) registerInfixes() {
 	infixOperators := []token.Type{
 		token.EQUAL, token.NOT_EQUAL,
+		token.OR, token.AND,
 		token.LESS_THAN, token.GREATER_THAN, token.LEQ, token.GEQ,
 		token.PLUS, token.MINUS,
 		token.TIMES, token.DIVIDE, token.REMAINDER,

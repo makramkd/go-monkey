@@ -15,6 +15,7 @@ var keywords = map[string]Type{
 	"if":     IF,
 	"else":   ELSE,
 	"return": RETURN,
+	"null":   NULL,
 }
 
 func New(tokType Type, literal string) Token {
@@ -45,6 +46,9 @@ const (
 	TIMES     = "*"
 	DIVIDE    = "/"
 	REMAINDER = "%"
+	// Boolean operators
+	AND = "&&"
+	OR  = "||"
 	// Comparison
 	GREATER_THAN = ">"
 	GEQ          = ">="
@@ -86,4 +90,5 @@ const (
 	TRUE     = "TRUE"
 	FALSE    = "FALSE"
 	RETURN   = "RETURN"
+	NULL     = "NULL"
 )
