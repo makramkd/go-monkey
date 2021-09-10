@@ -7,11 +7,13 @@ import (
 
 	"github.com/makramkd/go-monkey/evaluator"
 	"github.com/makramkd/go-monkey/lexer"
+	"github.com/makramkd/go-monkey/object"
 	"github.com/makramkd/go-monkey/parser"
 )
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
+	env := object.NewEnv()
 
 	for {
 		fmt.Print(">> ")
@@ -30,7 +32,9 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		evaluated := evaluator.Eval(program)
+		evaluated := evaluator.Eval(program, env)
+		// NOTE: evaluated == nil doesn't mean that there's an error. It just means we've executed
+		// a statement that has no output.
 		if evaluated != nil {
 			io.WriteString(out, evaluated.Inspect())
 			io.WriteString(out, "\n")

@@ -31,7 +31,8 @@ func TestEvalIntegerLiteral(t *testing.T) {
 		l := lexer.New(testCase.input)
 		p := parser.New(l)
 		program := p.ParseProgram()
-		val := evaluator.Eval(program)
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
 		assert.IsType(t, &object.Integer{}, val)
 		integerValue := val.(*object.Integer)
 		assert.Equal(t, testCase.expected, integerValue.Value)
@@ -65,7 +66,8 @@ func TestEvalBooleanLiteral(t *testing.T) {
 		l := lexer.New(testCase.input)
 		p := parser.New(l)
 		program := p.ParseProgram()
-		val := evaluator.Eval(program)
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
 		assert.IsType(t, &object.Boolean{}, val)
 		boolValue := val.(*object.Boolean)
 		assert.Equal(t, testCase.expected, boolValue.Value)
@@ -89,7 +91,8 @@ func TestBangOperator(t *testing.T) {
 		l := lexer.New(testCase.input)
 		p := parser.New(l)
 		program := p.ParseProgram()
-		val := evaluator.Eval(program)
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
 		assert.IsType(t, &object.Boolean{}, val)
 		boolValue := val.(*object.Boolean)
 		assert.Equal(t, testCase.expected, boolValue.Value)
@@ -111,7 +114,8 @@ func TestIfExpressions(t *testing.T) {
 		l := lexer.New(testCase.input)
 		p := parser.New(l)
 		program := p.ParseProgram()
-		val := evaluator.Eval(program)
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
 		assert.Equal(t, testCase.expected, val)
 	}
 }
@@ -131,7 +135,8 @@ func TestReturnStatements(t *testing.T) {
 		l := lexer.New(testCase.input)
 		p := parser.New(l)
 		program := p.ParseProgram()
-		val := evaluator.Eval(program)
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
 		assert.Equal(t, testCase.expected, val)
 	}
 }
@@ -154,7 +159,8 @@ func TestErrorHandling(t *testing.T) {
 		l := lexer.New(testCase.input)
 		p := parser.New(l)
 		program := p.ParseProgram()
-		val := evaluator.Eval(program)
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
 		assert.Equal(t, testCase.expected, val)
 	}
 }
@@ -174,7 +180,8 @@ func TestLetStatements(t *testing.T) {
 		l := lexer.New(testCase.input)
 		p := parser.New(l)
 		program := p.ParseProgram()
-		val := evaluator.Eval(program)
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
 		assert.Equal(t, testCase.expected, val)
 	}
 }
