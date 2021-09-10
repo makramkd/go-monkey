@@ -8,9 +8,11 @@ import (
 type ObjectType string
 
 const (
-	INTEGER ObjectType = "INTEGER"
-	BOOLEAN ObjectType = "BOOLEAN"
-	NULL    ObjectType = "NULL"
+	INTEGER      ObjectType = "INTEGER"
+	BOOLEAN      ObjectType = "BOOLEAN"
+	NULL         ObjectType = "NULL"
+	RETURN_VALUE ObjectType = "RETURN_VALUE"
+	ERROR        ObjectType = "ERROR"
 )
 
 type Object interface {
@@ -36,3 +38,17 @@ type Null struct{}
 
 func (n *Null) Inspect() string  { return "null" }
 func (n *Null) Type() ObjectType { return NULL }
+
+type ReturnValue struct {
+	Value Object
+}
+
+func (r *ReturnValue) Inspect() string  { return r.Value.Inspect() }
+func (r *ReturnValue) Type() ObjectType { return RETURN_VALUE }
+
+type Error struct {
+	Message string
+}
+
+func (e *Error) Inspect() string  { return "ERROR: " + e.Message }
+func (e *Error) Type() ObjectType { return ERROR }
