@@ -143,6 +143,9 @@ func (l *Lexer) NextToken() token.Token {
 		} else {
 			tok = token.New(token.ILLEGAL, string(l.ch))
 		}
+	case '"':
+		tok.Literal = l.readStringLiteral()
+		tok.T = token.STRING
 
 	case 0:
 		tok = token.New(token.EOF, "")
@@ -194,6 +197,17 @@ func (l *Lexer) read(cond func(rune) bool) string {
 	position := l.position
 	for cond(rune(l.ch)) {
 		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) readStringLiteral() string {
+	position := l.position + 1
+	for {
+		l.readChar()
+		if l.ch == '"' || l.ch == 0 {
+			break
+		}
 	}
 	return l.input[position:l.position]
 }

@@ -435,3 +435,22 @@ func TestCallExpression(t *testing.T) {
 
 	assert.Equal(t, expectedExprStmt, program.Statements[0])
 }
+
+func TestStringLiteralExpressions(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected *ast.StringLiteral
+	}{
+		{`"hello world";`, &ast.StringLiteral{Token: token.New(token.STRING, "hello world"), Value: "hello world"}},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		assert.IsType(t, &ast.ExpressionStatement{}, program.Statements[0])
+		exprStmt := program.Statements[0].(*ast.ExpressionStatement)
+		assert.Equal(t, testCase.expected, exprStmt.Expression)
+	}
+}

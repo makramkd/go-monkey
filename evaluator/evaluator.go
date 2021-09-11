@@ -68,6 +68,8 @@ func Eval(root ast.Node, env *object.Env) object.Object {
 		params := node.Parameters
 		body := node.Body
 		return &object.Function{Parameters: params, Body: body, Env: env}
+	case *ast.StringLiteral:
+		return &object.String{Value: node.Value}
 	}
 
 	return nil
@@ -130,6 +132,8 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 		return evalIntegerInfixExpression(operator, left, right)
 	case left.Type() == object.BOOLEAN && right.Type() == object.BOOLEAN:
 		return evalBooleanInfixExpression(operator, left, right)
+	case left.Type() == object.STRING && right.Type() == object.STRING:
+		return evalStringInfixExpression(operator, left, right)
 	case left.Type() != right.Type():
 		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
 	default:
@@ -194,6 +198,21 @@ func evalIntegerInfixExpression(operator string, left, right object.Object) obje
 	case "||":
 		return nativeBoolToBoolean((leftVal != 0) || (rightVal != 0))
 
+	default:
+		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+	}
+}
+
+func evalStringInfixExpression(operator string, left, right object.Object) object.Object {
+	l := left.(*object.String).Value
+	r := right.(*object.String).Value
+	switch operator {
+	case "+":
+		return &object.String{Value: l + r}
+	case "==":
+		return nativeBoolToBoolean(l == r)
+	case "!=":
+		return nativeBoolToBoolean(l != r)
 	default:
 		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
 	}

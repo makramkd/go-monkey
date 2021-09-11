@@ -63,6 +63,7 @@ a -= 1
 a += 1
 a *= 1
 a /= 1
+"hello world today"
 `
 	l := lexer.New(input)
 	tests := []struct {
@@ -210,6 +211,8 @@ a /= 1
 		{token.IDENT, "a"},
 		{token.DIV_EQ, "/="},
 		{token.INT, "1"},
+
+		{token.STRING, "hello world today"},
 	}
 
 	for _, tt := range tests {

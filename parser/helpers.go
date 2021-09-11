@@ -71,6 +71,7 @@ func (p *Parser) registerPrefixes() {
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.IF, p.parseIfExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
+	p.registerPrefix(token.STRING, p.parseStringLiteral)
 }
 
 func (p *Parser) registerInfixes() {

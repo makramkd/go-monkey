@@ -216,3 +216,26 @@ func TestFunctionObject(t *testing.T) {
 		assert.Equal(t, testCase.expected, val)
 	}
 }
+
+func TestStringOperations(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected object.Object
+	}{
+		{`"hello world" + " today";`, &object.String{Value: "hello world today"}},
+		{`let firstName = "Makram"; let lastName = "Kamaleddine"; let f = fn (first, last) { return first + " " + last; }; f(firstName, lastName);`,
+			&object.String{Value: "Makram Kamaleddine"}},
+		{`"hello world" == "hello world";`, &object.Boolean{Value: true}},
+		{`"hello world" != "today";`, &object.Boolean{Value: true}},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
+		assert.Equal(t, testCase.expected, val)
+	}
+}
