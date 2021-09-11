@@ -185,3 +185,34 @@ func TestLetStatements(t *testing.T) {
 		assert.Equal(t, testCase.expected, val)
 	}
 }
+
+func TestFunctionObject(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected object.Object
+	}{
+		{`let f = fn(x) { return x + 2; }; f(2);`, &object.Integer{Value: 4}},
+		{`let f = fn(x, y) { return x**2 + y**2; }; f(2, 2);`, &object.Integer{Value: 8}},
+		{`let x = 2; let f = fn(x) { return x ** 2; }; f(3);`, &object.Integer{Value: 9}},
+		{
+			`let x = 2; 
+			 let f = fn(x) { 
+				let inner = fn(y) {
+					return y ** 2;
+			 	};
+				return inner(x + 1);
+			 };
+			 f(3);
+			 `, &object.Integer{Value: 16}},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Len(t, p.Errors(), 0)
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
+		assert.Equal(t, testCase.expected, val)
+	}
+}

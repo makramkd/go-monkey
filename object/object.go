@@ -3,6 +3,9 @@ package object
 import (
 	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/makramkd/go-monkey/ast"
 )
 
 type ObjectType string
@@ -13,6 +16,7 @@ const (
 	NULL         ObjectType = "NULL"
 	RETURN_VALUE ObjectType = "RETURN_VALUE"
 	ERROR        ObjectType = "ERROR"
+	FUNCTION     ObjectType = "FUNCTION"
 )
 
 type Object interface {
@@ -52,3 +56,23 @@ type Error struct {
 
 func (e *Error) Inspect() string  { return "ERROR: " + e.Message }
 func (e *Error) Type() ObjectType { return ERROR }
+
+type Function struct {
+	Parameters []*ast.Identifier
+	Body       *ast.BlockStatement
+	Env        *Env
+}
+
+func (f *Function) Type() ObjectType { return FUNCTION }
+func (f *Function) Inspect() string {
+	builder := strings.Builder{}
+
+	builder.WriteString("fn(")
+	for _, param := range f.Parameters {
+		builder.WriteString(param.String())
+	}
+	builder.WriteString(") {\n")
+	builder.WriteString(f.Body.String())
+	builder.WriteString("\n}")
+	return builder.String()
+}

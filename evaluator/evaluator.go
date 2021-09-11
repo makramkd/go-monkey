@@ -62,6 +62,12 @@ func Eval(root ast.Node, env *object.Env) object.Object {
 		return evalIfExpression(node, env)
 	case *ast.Identifier:
 		return evalIdentifier(node, env)
+	case *ast.CallExpression:
+		return evalCallExpression(node, env)
+	case *ast.FunctionLiteral:
+		params := node.Parameters
+		body := node.Body
+		return &object.Function{Parameters: params, Body: body, Env: env}
 	}
 
 	return nil
@@ -202,6 +208,38 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 	default:
 		return NULL
 	}
+}
+
+func evalCallExpression(call *ast.CallExpression, env *object.Env) object.Object {
+	v := Eval(call.Function, env)
+	if isError(v) {
+		return v
+	}
+
+	f := v.(*object.Function)
+
+	fEnv := object.NewScopedEnv(f.Env)
+	// evaluate arguments left to right, propagating errors as necessary
+	// and set the appropriate values in the environment.
+	for i, arg := range call.Arguments {
+		v := Eval(arg, env)
+		if isError(v) {
+			return v
+		}
+		fEnv.Set(f.Parameters[i].Value, v)
+	}
+
+	// eval the function body with this new environment
+	ret := Eval(f.Body, fEnv)
+
+	return unwrapReturnValue(ret)
+}
+
+func unwrapReturnValue(obj object.Object) object.Object {
+	if rValue, ok := obj.(*object.ReturnValue); ok {
+		return rValue.Value
+	}
+	return obj
 }
 
 func evalBangOperator(right object.Object) *object.Boolean {
