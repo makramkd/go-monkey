@@ -124,6 +124,8 @@ func (l *Lexer) NextToken() token.Token {
 		tok = token.New(token.RPAREN, string(l.ch))
 	case '[':
 		tok = token.New(token.LBRACK, string(l.ch))
+	case ']':
+		tok = token.New(token.RBRACK, string(l.ch))
 
 	case '.':
 		tok = token.New(token.PERIOD, string(l.ch))

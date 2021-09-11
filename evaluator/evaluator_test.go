@@ -239,3 +239,46 @@ func TestStringOperations(t *testing.T) {
 		assert.Equal(t, testCase.expected, val)
 	}
 }
+
+func TestBuiltinFunctions(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected object.Object
+	}{
+		{`len("")`, &object.Integer{Value: 0}},
+		{`len("hello")`, &object.Integer{Value: 5}},
+		{`len(1)`, &object.Error{Message: "argument to 'len' not supported, got INTEGER"}},
+		{`len("one", "two")`, &object.Error{Message: "wrong number of arguments. got=2, want=1"}},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
+		assert.Equal(t, testCase.expected, val)
+	}
+}
+
+func TestArrayAccess(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected object.Object
+	}{
+		{`let a = [1, 2, 3, 4]; a[0];`, &object.Integer{Value: 1}},
+		{`let a = [true, false, "hello"]; a[0];`, &object.Boolean{Value: true}},
+		{`let a = [true, false, "hello"]; a[2];`, &object.String{Value: "hello"}},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		env := object.NewEnv()
+		val := evaluator.Eval(program, env)
+		assert.Equal(t, testCase.expected, val)
+	}
+}

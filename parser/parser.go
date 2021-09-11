@@ -184,6 +184,39 @@ func (p *Parser) parseBooleanLiteral() ast.Expression {
 	return lit
 }
 
+func (p *Parser) parseArrayLiteral() ast.Expression {
+	lit := &ast.ArrayLiteral{Token: p.curToken}
+
+	lit.Elements = p.parseArrayElements()
+
+	return lit
+}
+
+func (p *Parser) parseArrayElements() []ast.Expression {
+	elements := []ast.Expression{}
+
+	// Check for empty array
+	if p.peekTokenIs(token.RBRACK) {
+		p.nextToken()
+		return elements
+	}
+
+	p.nextToken()
+	elements = append(elements, p.parseExpression(LOWEST))
+
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken()
+		p.nextToken()
+		elements = append(elements, p.parseExpression(LOWEST))
+	}
+
+	if !p.expectPeek(token.RBRACK) {
+		return nil
+	}
+
+	return elements
+}
+
 func (p *Parser) parsePrefixExpression() ast.Expression {
 	exp := &ast.PrefixExpression{Token: p.curToken, Operator: p.curToken.Literal}
 
@@ -322,6 +355,23 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 	}
 
 	return parameters
+}
+
+func (p *Parser) parseArrayAccessExpression(array ast.Expression) ast.Expression {
+	accessExpr := &ast.ArrayAccessExpression{
+		Token: p.curToken,
+		Array: array,
+	}
+
+	p.nextToken()
+
+	accessExpr.Index = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.RBRACK) {
+		return nil
+	}
+
+	return accessExpr
 }
 
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {

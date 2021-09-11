@@ -271,6 +271,7 @@ func (c *CallExpression) expressionNode()      {}
 func (c *CallExpression) TokenLiteral() string { return c.Token.Literal }
 func (c *CallExpression) String() string {
 	builder := strings.Builder{}
+	builder.WriteByte('(')
 	builder.WriteString(c.Function.String())
 	builder.WriteRune('(')
 	for i, arg := range c.Arguments {
@@ -280,6 +281,7 @@ func (c *CallExpression) String() string {
 		}
 	}
 	builder.WriteRune(')')
+	builder.WriteByte(')')
 	return builder.String()
 }
 
@@ -291,3 +293,42 @@ type StringLiteral struct {
 func (s *StringLiteral) expressionNode()      {}
 func (s *StringLiteral) TokenLiteral() string { return s.Token.Literal }
 func (s *StringLiteral) String() string       { return s.Token.Literal }
+
+type ArrayLiteral struct {
+	Token    token.Token
+	Elements []Expression
+}
+
+func (a *ArrayLiteral) expressionNode()      {}
+func (a *ArrayLiteral) TokenLiteral() string { return a.Token.Literal }
+func (a *ArrayLiteral) String() string {
+	builder := strings.Builder{}
+	builder.WriteByte('[')
+	for i, e := range a.Elements {
+		builder.WriteString(e.String())
+		if i < len(a.Elements)-1 {
+			builder.WriteByte(',')
+		}
+	}
+	builder.WriteByte(']')
+	return builder.String()
+}
+
+type ArrayAccessExpression struct {
+	Token token.Token // The '[' token
+	Array Expression  // can either be an array literal or an identifier
+	Index Expression  // The index to access from the array
+}
+
+func (a *ArrayAccessExpression) expressionNode()      {}
+func (a *ArrayAccessExpression) TokenLiteral() string { return a.Token.Literal }
+func (a *ArrayAccessExpression) String() string {
+	builder := strings.Builder{}
+	builder.WriteByte('(')
+	builder.WriteString(a.Array.String())
+	builder.WriteByte('[')
+	builder.WriteString(a.Index.String())
+	builder.WriteByte(']')
+	builder.WriteByte(')')
+	return builder.String()
+}

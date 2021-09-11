@@ -230,9 +230,10 @@ func TestPrecedence(t *testing.T) {
 		{"!(true == true)", "(!(true == true))"},
 		{"-(5 + 5)", "(-(5 + 5))"},
 		{"a ** 2 * 2 + 1", "(((a ** 2) * 2) + 1)"},
-		{"a ** add(1, 2, 3) + 4", "((a ** add(1,2,3)) + 4)"},
+		{"a ** add(1, 2, 3) + 4", "((a ** (add(1,2,3))) + 4)"},
 		{"a && b || c", "((a && b) || c)"},
 		{"a || b && c", "(a || (b && c))"},
+		{"a[0](1, 2)", "((a[0])(1,2))"},
 	}
 
 	for _, testCase := range testCases {
@@ -442,6 +443,88 @@ func TestStringLiteralExpressions(t *testing.T) {
 		expected *ast.StringLiteral
 	}{
 		{`"hello world";`, &ast.StringLiteral{Token: token.New(token.STRING, "hello world"), Value: "hello world"}},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		assert.IsType(t, &ast.ExpressionStatement{}, program.Statements[0])
+		exprStmt := program.Statements[0].(*ast.ExpressionStatement)
+		assert.Equal(t, testCase.expected, exprStmt.Expression)
+	}
+}
+
+func TestArrayLiteralExpressions(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected *ast.ArrayLiteral
+	}{
+		{`[1, "2", fn(x, y) { x + y }];`, &ast.ArrayLiteral{
+			Token: token.New(token.LBRACK, "["),
+			Elements: []ast.Expression{
+				&ast.IntegerLiteral{Token: token.New(token.INT, "1"), Value: 1},
+				&ast.StringLiteral{Value: "2", Token: token.New(token.STRING, "2")},
+				&ast.FunctionLiteral{
+					Token: token.New(token.FUNCTION, "fn"),
+					Parameters: []*ast.Identifier{
+						{Token: token.New(token.IDENT, "x"), Value: "x"},
+						{Token: token.New(token.IDENT, "y"), Value: "y"},
+					},
+					Body: &ast.BlockStatement{
+						Token: token.New(token.LBRACE, "{"),
+						Statements: []ast.Statement{
+							&ast.ExpressionStatement{
+								Token: token.New(token.IDENT, "x"),
+								Expression: &ast.InfixExpression{
+									Token:    token.New(token.PLUS, "+"),
+									Left:     &ast.Identifier{Token: token.New(token.IDENT, "x"), Value: "x"},
+									Operator: "+",
+									Right:    &ast.Identifier{Token: token.New(token.IDENT, "y"), Value: "y"},
+								},
+							},
+						},
+					},
+				},
+			},
+		}},
+	}
+
+	for _, testCase := range testCases {
+		l := lexer.New(testCase.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		assert.IsType(t, &ast.ExpressionStatement{}, program.Statements[0])
+		exprStmt := program.Statements[0].(*ast.ExpressionStatement)
+		assert.Equal(t, testCase.expected, exprStmt.Expression)
+	}
+}
+
+func TestArrayAccessExpressions(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected *ast.ArrayAccessExpression
+	}{
+		{`arr[0];`, &ast.ArrayAccessExpression{
+			Token: token.New(token.LBRACK, "["),
+			Array: &ast.Identifier{Token: token.New(token.IDENT, "arr"), Value: "arr"},
+			Index: &ast.IntegerLiteral{Token: token.New(token.INT, "0"), Value: 0},
+		}},
+		{`[1, 2, 3, 4][0];`, &ast.ArrayAccessExpression{
+			Token: token.New(token.LBRACK, "["),
+			Array: &ast.ArrayLiteral{
+				Token: token.New(token.LBRACK, "["),
+				Elements: []ast.Expression{
+					&ast.IntegerLiteral{Token: token.New(token.INT, "1"), Value: 1},
+					&ast.IntegerLiteral{Token: token.New(token.INT, "2"), Value: 2},
+					&ast.IntegerLiteral{Token: token.New(token.INT, "3"), Value: 3},
+					&ast.IntegerLiteral{Token: token.New(token.INT, "4"), Value: 4},
+				},
+			},
+			Index: &ast.IntegerLiteral{Token: token.New(token.INT, "0"), Value: 0},
+		}},
 	}
 
 	for _, testCase := range testCases {

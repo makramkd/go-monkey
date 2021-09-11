@@ -29,7 +29,7 @@ const (
 	PRODUCT     // *, /, or %
 	POWER       // **
 	PREFIX      // -X, !X, --X, ++X
-	CALL        // function(X)
+	CALL        // function(X), array[i]
 )
 
 // Precedence of the binary operators.
@@ -57,6 +57,7 @@ var precedenceTable = map[token.Type]operatorPrecedence{
 	token.POWER: POWER,
 
 	token.LPAREN: CALL,
+	token.LBRACK: CALL,
 }
 
 func (p *Parser) registerPrefixes() {
@@ -72,6 +73,7 @@ func (p *Parser) registerPrefixes() {
 	p.registerPrefix(token.IF, p.parseIfExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
+	p.registerPrefix(token.LBRACK, p.parseArrayLiteral)
 }
 
 func (p *Parser) registerInfixes() {
@@ -87,6 +89,7 @@ func (p *Parser) registerInfixes() {
 		p.registerInfix(tokType, p.parseInfixExpression)
 	}
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
+	p.registerInfix(token.LBRACK, p.parseArrayAccessExpression)
 }
 
 func (p *Parser) nextToken() {

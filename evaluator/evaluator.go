@@ -70,6 +70,10 @@ func Eval(root ast.Node, env *object.Env) object.Object {
 		return &object.Function{Parameters: params, Body: body, Env: env}
 	case *ast.StringLiteral:
 		return &object.String{Value: node.Value}
+	case *ast.ArrayLiteral:
+		return evalArrayLiteral(node, env)
+	case *ast.ArrayAccessExpression:
+		return evalArrayAccessExpression(node, env)
 	}
 
 	return nil
@@ -118,12 +122,15 @@ func nativeBoolToBoolean(b bool) *object.Boolean {
 }
 
 func evalIdentifier(ident *ast.Identifier, env *object.Env) object.Object {
-	v, ok := env.Get(ident.Value)
-	if !ok {
-		return newError("identifier not found: %s", ident.Value)
+	if v, ok := env.Get(ident.Value); ok {
+		return v
 	}
 
-	return v
+	if builtin, ok := builtins[ident.Value]; ok {
+		return builtin
+	}
+
+	return newError("identifier not found: %s", ident.Value)
 }
 
 func evalInfixExpression(operator string, left, right object.Object) object.Object {
@@ -235,23 +242,88 @@ func evalCallExpression(call *ast.CallExpression, env *object.Env) object.Object
 		return v
 	}
 
-	f := v.(*object.Function)
-
-	fEnv := object.NewScopedEnv(f.Env)
-	// evaluate arguments left to right, propagating errors as necessary
-	// and set the appropriate values in the environment.
-	for i, arg := range call.Arguments {
+	evaluatedArgs := []object.Object{}
+	for _, arg := range call.Arguments {
 		v := Eval(arg, env)
 		if isError(v) {
 			return v
 		}
-		fEnv.Set(f.Parameters[i].Value, v)
+		evaluatedArgs = append(evaluatedArgs, v)
 	}
 
-	// eval the function body with this new environment
-	ret := Eval(f.Body, fEnv)
+	switch f := v.(type) {
+	case *object.Function:
+		fEnv := object.NewScopedEnv(f.Env)
+		// evaluate arguments left to right, propagating errors as necessary
+		// and set the appropriate values in the environment.
+		for i, arg := range evaluatedArgs {
+			fEnv.Set(f.Parameters[i].Value, arg)
+		}
 
-	return unwrapReturnValue(ret)
+		// eval the function body with this new environment
+		ret := Eval(f.Body, fEnv)
+
+		return unwrapReturnValue(ret)
+	case *object.Builtin:
+		return f.F(evaluatedArgs...)
+	default:
+		return newError("not a function: %s", f.Type())
+	}
+
+}
+
+func evalArrayLiteral(array *ast.ArrayLiteral, env *object.Env) object.Object {
+	vals := []object.Object{}
+	for _, exp := range array.Elements {
+		v := Eval(exp, env)
+		if isError(v) {
+			return v
+		}
+		vals = append(vals, v)
+	}
+
+	return &object.Array{Values: vals}
+}
+
+func evalArrayAccessExpression(expr *ast.ArrayAccessExpression, env *object.Env) object.Object {
+	// Evaluate index to make sure it's integral and >= 0
+	index := Eval(expr.Index, env)
+
+	if index.Type() != object.INTEGER {
+		return newError("array access index must be integral, got: %s", index.Type())
+	}
+
+	idx := index.(*object.Integer)
+	if idx.Value < 0 {
+		return newError("array access index must be greater than zero, got: %d", idx.Value)
+	}
+
+	// Evaluate the array in the access expression
+	var array *object.Array
+	switch a := expr.Array.(type) {
+	case *ast.ArrayLiteral:
+		lit := Eval(a, env)
+		if isError(lit) {
+			return lit
+		}
+		array = lit.(*object.Array)
+	case *ast.Identifier:
+		i := Eval(a, env)
+		if isError(i) {
+			return i
+		}
+		if i.Type() != object.ARRAY {
+			return newError("object is not of type array: %s, actual type: %s", a.Value, i.Type())
+		}
+		array = i.(*object.Array)
+	}
+
+	// Access the index at idx or return out of bounds error
+	if int(idx.Value) >= len(array.Values) {
+		return newError("out of bounds error: index %d is out of range for array", idx.Value)
+	}
+
+	return array.Values[int(idx.Value)]
 }
 
 func unwrapReturnValue(obj object.Object) object.Object {
