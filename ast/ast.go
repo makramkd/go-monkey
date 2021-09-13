@@ -332,3 +332,18 @@ func (a *ArrayAccessExpression) String() string {
 	builder.WriteByte(')')
 	return builder.String()
 }
+
+type ImportStatement struct {
+	Token  token.Token // The 'import' token
+	Module *Identifier // The module to import, will be an identifier
+}
+
+func (i *ImportStatement) statementNode()       {}
+func (i *ImportStatement) TokenLiteral() string { return i.Token.Literal }
+func (i *ImportStatement) String() string {
+	builder := strings.Builder{}
+	builder.WriteString("import ")
+	builder.WriteString(i.Module.Value)
+	builder.WriteString(";")
+	return builder.String()
+}

@@ -36,6 +36,15 @@ func Eval(root ast.Node, env *object.Env) object.Object {
 			return val
 		}
 		env.Set(node.Name.Value, val)
+	case *ast.ImportStatement:
+		loaded, err := loadStdModule(node.Module.Value)
+		if err != nil {
+			return newError(err.Error())
+		}
+
+		// Evaluate the module without returning anything.
+		// This should load any exported symbols into the current environment.
+		Eval(loaded, env)
 
 	// Expressions
 	case *ast.IntegerLiteral:
