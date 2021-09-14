@@ -1,6 +1,10 @@
 package evaluator
 
-import "github.com/makramkd/go-monkey/object"
+import (
+	"fmt"
+
+	"github.com/makramkd/go-monkey/object"
+)
 
 var builtins = map[string]*object.Builtin{
 	"len": {
@@ -87,7 +91,7 @@ var builtins = map[string]*object.Builtin{
 	"push": {
 		F: func(args ...object.Object) object.Object {
 			if len(args) != 2 {
-				return newError("wrong number of arguments. got=%d, want=%d", len(args), 1)
+				return newError("wrong number of arguments. got=%d, want=%d", len(args), 2)
 			}
 
 			a := args[0]
@@ -105,6 +109,15 @@ var builtins = map[string]*object.Builtin{
 			default:
 				return newError("argument to 'first' must be ARRAY, got %s", a.Type())
 			}
+		},
+	},
+	"puts": {
+		F: func(args ...object.Object) object.Object {
+			for _, a := range args {
+				fmt.Println(a.Inspect())
+			}
+
+			return NULL
 		},
 	},
 }
