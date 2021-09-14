@@ -74,6 +74,7 @@ func (p *Parser) registerPrefixes() {
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
 	p.registerPrefix(token.LBRACK, p.parseArrayLiteral)
+	p.registerPrefix(token.LBRACE, p.parseHashLiteral)
 }
 
 func (p *Parser) registerInfixes() {
@@ -89,7 +90,7 @@ func (p *Parser) registerInfixes() {
 		p.registerInfix(tokType, p.parseInfixExpression)
 	}
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
-	p.registerInfix(token.LBRACK, p.parseArrayAccessExpression)
+	p.registerInfix(token.LBRACK, p.parseIndexAccessExpression)
 }
 
 func (p *Parser) nextToken() {

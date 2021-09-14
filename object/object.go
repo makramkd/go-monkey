@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"hash/fnv"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,7 @@ const (
 	STRING       ObjectType = "STRING"
 	ARRAY        ObjectType = "ARRAY"
 	BUILTIN      ObjectType = "BUILTIN"
+	HASH         ObjectType = "HASH"
 )
 
 type Object interface {
@@ -112,3 +114,59 @@ type Builtin struct {
 
 func (b *Builtin) Type() ObjectType { return BUILTIN }
 func (b *Builtin) Inspect() string  { return "builtin function" }
+
+type Hashable interface {
+	HashKey() HashKey
+}
+
+type HashKey struct {
+	Type  ObjectType
+	Value uint64
+}
+
+func (b *Boolean) HashKey() HashKey {
+	var value uint64
+
+	if b.Value {
+		value = 1
+	} else {
+		value = 0
+	}
+
+	return HashKey{Type: BOOLEAN, Value: value}
+}
+
+func (b *Integer) HashKey() HashKey {
+	return HashKey{Type: INTEGER, Value: uint64(b.Value)}
+}
+
+func (s *String) HashKey() HashKey {
+	h := fnv.New64a()
+	h.Write([]byte(s.Value))
+
+	return HashKey{Type: STRING, Value: h.Sum64()}
+}
+
+type HashPair struct {
+	Key   Object
+	Value Object
+}
+
+type Hash struct {
+	Pairs map[HashKey]HashPair
+}
+
+func (h *Hash) Type() ObjectType { return HASH }
+func (h *Hash) Inspect() string {
+	builder := strings.Builder{}
+
+	pairs := []string{}
+	for _, pair := range h.Pairs {
+		pairs = append(pairs, pair.Key.Inspect()+":"+pair.Value.Inspect())
+	}
+
+	builder.WriteByte('{')
+	builder.WriteString(strings.Join(pairs, ", "))
+	builder.WriteByte('}')
+	return builder.String()
+}

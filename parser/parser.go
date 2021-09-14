@@ -375,10 +375,10 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 	return parameters
 }
 
-func (p *Parser) parseArrayAccessExpression(array ast.Expression) ast.Expression {
-	accessExpr := &ast.ArrayAccessExpression{
+func (p *Parser) parseIndexAccessExpression(array ast.Expression) ast.Expression {
+	accessExpr := &ast.IndexAccessExpression{
 		Token: p.curToken,
-		Array: array,
+		Left:  array,
 	}
 
 	p.nextToken()
@@ -423,4 +423,51 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 	}
 
 	return args
+}
+
+func (p *Parser) parseHashLiteral() ast.Expression {
+	lit := &ast.HashLiteral{Token: p.curToken}
+
+	pairs := p.parseHashPairs()
+	if pairs == nil {
+		return nil
+	}
+
+	lit.Pairs = pairs
+
+	return lit
+}
+
+func (p *Parser) parseHashPairs() map[ast.Expression]ast.Expression {
+	pairs := map[ast.Expression]ast.Expression{}
+
+	// handle empty hash
+	if p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
+		return pairs
+	}
+
+	for !p.peekTokenIs(token.RBRACE) {
+		p.nextToken()
+		key := p.parseExpression(LOWEST)
+
+		if !p.expectPeek(token.COLON) {
+			return nil
+		}
+
+		p.nextToken()
+		value := p.parseExpression(LOWEST)
+
+		pairs[key] = value
+
+		if !p.peekTokenIs(token.RBRACE) && !p.expectPeek(token.COMMA) {
+			return nil
+		}
+	}
+
+	if !p.expectPeek(token.RBRACE) {
+		return nil
+	}
+
+	return pairs
 }

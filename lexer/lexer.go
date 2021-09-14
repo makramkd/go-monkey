@@ -38,6 +38,8 @@ func (l *Lexer) NextToken() token.Token {
 		tok = token.New(token.SEMICOLON, string(l.ch))
 	case ',':
 		tok = token.New(token.COMMA, string(l.ch))
+	case ':':
+		tok = token.New(token.COLON, string(l.ch))
 
 	// Operators
 	case '=':

@@ -505,16 +505,16 @@ func TestArrayLiteralExpressions(t *testing.T) {
 func TestArrayAccessExpressions(t *testing.T) {
 	testCases := []struct {
 		input    string
-		expected *ast.ArrayAccessExpression
+		expected *ast.IndexAccessExpression
 	}{
-		{`arr[0];`, &ast.ArrayAccessExpression{
+		{`arr[0];`, &ast.IndexAccessExpression{
 			Token: token.New(token.LBRACK, "["),
-			Array: &ast.Identifier{Token: token.New(token.IDENT, "arr"), Value: "arr"},
+			Left:  &ast.Identifier{Token: token.New(token.IDENT, "arr"), Value: "arr"},
 			Index: &ast.IntegerLiteral{Token: token.New(token.INT, "0"), Value: 0},
 		}},
-		{`[1, 2, 3, 4][0];`, &ast.ArrayAccessExpression{
+		{`[1, 2, 3, 4][0];`, &ast.IndexAccessExpression{
 			Token: token.New(token.LBRACK, "["),
-			Array: &ast.ArrayLiteral{
+			Left: &ast.ArrayLiteral{
 				Token: token.New(token.LBRACK, "["),
 				Elements: []ast.Expression{
 					&ast.IntegerLiteral{Token: token.New(token.INT, "1"), Value: 1},

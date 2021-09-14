@@ -314,18 +314,18 @@ func (a *ArrayLiteral) String() string {
 	return builder.String()
 }
 
-type ArrayAccessExpression struct {
+type IndexAccessExpression struct {
 	Token token.Token // The '[' token
-	Array Expression  // can either be an array literal or an identifier
+	Left  Expression  // can either be an array literal, hash literal or an identifier that refers to either type
 	Index Expression  // The index to access from the array
 }
 
-func (a *ArrayAccessExpression) expressionNode()      {}
-func (a *ArrayAccessExpression) TokenLiteral() string { return a.Token.Literal }
-func (a *ArrayAccessExpression) String() string {
+func (a *IndexAccessExpression) expressionNode()      {}
+func (a *IndexAccessExpression) TokenLiteral() string { return a.Token.Literal }
+func (a *IndexAccessExpression) String() string {
 	builder := strings.Builder{}
 	builder.WriteByte('(')
-	builder.WriteString(a.Array.String())
+	builder.WriteString(a.Left.String())
 	builder.WriteByte('[')
 	builder.WriteString(a.Index.String())
 	builder.WriteByte(']')
@@ -345,5 +345,24 @@ func (i *ImportStatement) String() string {
 	builder.WriteString("import ")
 	builder.WriteString(i.Module.Value)
 	builder.WriteString(";")
+	return builder.String()
+}
+
+type HashLiteral struct {
+	Token token.Token // The '{' token
+	Pairs map[Expression]Expression
+}
+
+func (h *HashLiteral) expressionNode()      {}
+func (h *HashLiteral) TokenLiteral() string { return h.Token.Literal }
+func (h *HashLiteral) String() string {
+	builder := strings.Builder{}
+	builder.WriteByte('{')
+	pairs := []string{}
+	for k, v := range h.Pairs {
+		pairs = append(pairs, k.String()+":"+v.String())
+	}
+	builder.WriteString(strings.Join(pairs, ", "))
+	builder.WriteByte('}')
 	return builder.String()
 }

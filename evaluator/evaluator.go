@@ -81,8 +81,10 @@ func Eval(root ast.Node, env *object.Env) object.Object {
 		return &object.String{Value: node.Value}
 	case *ast.ArrayLiteral:
 		return evalArrayLiteral(node, env)
-	case *ast.ArrayAccessExpression:
-		return evalArrayAccessExpression(node, env)
+	case *ast.IndexAccessExpression:
+		return evalIndexAccessExpression(node, env)
+	case *ast.HashLiteral:
+		return evalHashLiteral(node, env)
 	}
 
 	return nil
@@ -281,6 +283,34 @@ func evalCallExpression(call *ast.CallExpression, env *object.Env) object.Object
 
 }
 
+func evalHashLiteral(hash *ast.HashLiteral, env *object.Env) object.Object {
+	hashVal := &object.Hash{Pairs: map[object.HashKey]object.HashPair{}}
+
+	for k, v := range hash.Pairs {
+		keyVal := Eval(k, env)
+		if isError(keyVal) {
+			return keyVal
+		}
+
+		hb, ok := isHashable(keyVal)
+		if !ok {
+			return newError("given key '%s' is not hashable", keyVal.Inspect())
+		}
+
+		valVal := Eval(v, env)
+		if isError(valVal) {
+			return valVal
+		}
+
+		hashVal.Pairs[hb.HashKey()] = object.HashPair{
+			Key:   keyVal,
+			Value: valVal,
+		}
+	}
+
+	return hashVal
+}
+
 func evalArrayLiteral(array *ast.ArrayLiteral, env *object.Env) object.Object {
 	vals := []object.Object{}
 	for _, exp := range array.Elements {
@@ -294,38 +324,46 @@ func evalArrayLiteral(array *ast.ArrayLiteral, env *object.Env) object.Object {
 	return &object.Array{Values: vals}
 }
 
-func evalArrayAccessExpression(expr *ast.ArrayAccessExpression, env *object.Env) object.Object {
-	// Evaluate index to make sure it's integral and >= 0
+func evalIndexAccessExpression(expr *ast.IndexAccessExpression, env *object.Env) object.Object {
+	left := Eval(expr.Left, env)
+	if isError(left) {
+		return left
+	}
+
 	index := Eval(expr.Index, env)
-
-	if index.Type() != object.INTEGER {
-		return newError("array access index must be integral, got: %s", index.Type())
+	if isError(index) {
+		return index
 	}
 
+	switch {
+	case left.Type() == object.ARRAY && index.Type() == object.INTEGER:
+		return evalArrayAccessExpression(left, index)
+	case left.Type() == object.HASH:
+		return evalHashAccessExpression(left, index)
+	default:
+		return newError("index operator not supported: %s", left.Type())
+	}
+}
+
+func evalHashAccessExpression(left, index object.Object) object.Object {
+	hash := left.(*object.Hash)
+
+	key, ok := isHashable(index)
+	if !ok {
+		return newError("unusable as hash key: %s", index.Inspect())
+	}
+
+	pair, ok := hash.Pairs[key.HashKey()]
+	if !ok {
+		return NULL
+	}
+
+	return pair.Value
+}
+
+func evalArrayAccessExpression(left, index object.Object) object.Object {
+	array := left.(*object.Array)
 	idx := index.(*object.Integer)
-	if idx.Value < 0 {
-		return newError("array access index must be greater than zero, got: %d", idx.Value)
-	}
-
-	// Evaluate the array in the access expression
-	var array *object.Array
-	switch a := expr.Array.(type) {
-	case *ast.ArrayLiteral:
-		lit := Eval(a, env)
-		if isError(lit) {
-			return lit
-		}
-		array = lit.(*object.Array)
-	case *ast.Identifier:
-		i := Eval(a, env)
-		if isError(i) {
-			return i
-		}
-		if i.Type() != object.ARRAY {
-			return newError("object is not of type array: %s, actual type: %s", a.Value, i.Type())
-		}
-		array = i.(*object.Array)
-	}
 
 	// Access the index at idx or return out of bounds error
 	if int(idx.Value) >= len(array.Values) {
@@ -405,4 +443,9 @@ func isError(o object.Object) bool {
 		return o.Type() == object.ERROR
 	}
 	return false
+}
+
+func isHashable(o object.Object) (object.Hashable, bool) {
+	hb, ok := o.(object.Hashable)
+	return hb, ok
 }
