@@ -537,3 +537,155 @@ func TestArrayAccessExpressions(t *testing.T) {
 		assert.Equal(t, testCase.expected, exprStmt.Expression)
 	}
 }
+
+func TestParseImportStatements(t *testing.T) {
+
+}
+
+func TestHashLiteralExpressions(t *testing.T) {
+
+}
+
+func TestHashAccessExpressions(t *testing.T) {
+
+}
+
+func TestForEachStatements(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected *ast.ForEachStatement
+	}{
+		{`for x in y { sayHello(); }`, &ast.ForEachStatement{
+			Token: token.New(token.FOR, "for"),
+			Identifiers: []*ast.Identifier{
+				{
+					Token: token.New(token.IDENT, "x"),
+					Value: "x",
+				},
+			},
+			Collection: &ast.Identifier{
+				Token: token.New(token.IDENT, "y"),
+				Value: "y",
+			},
+			Body: &ast.BlockStatement{
+				Token: token.New(token.LBRACE, "{"),
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Token: token.New(token.IDENT, "sayHello"),
+						Expression: &ast.CallExpression{
+							Token: token.New(token.LPAREN, "("),
+							Function: &ast.Identifier{
+								Token: token.New(token.IDENT, "sayHello"),
+								Value: "sayHello",
+							},
+							Arguments: []ast.Expression{},
+						},
+					},
+				},
+			},
+		}},
+		{`for x in [1, 2, 3] { sayHello(); }`, &ast.ForEachStatement{
+			Token: token.New(token.FOR, "for"),
+			Identifiers: []*ast.Identifier{
+				{
+					Token: token.New(token.IDENT, "x"),
+					Value: "x",
+				},
+			},
+			Collection: &ast.ArrayLiteral{
+				Token: token.New(token.LBRACK, "["),
+				Elements: []ast.Expression{
+					&ast.IntegerLiteral{
+						Token: token.New(token.INT, "1"),
+						Value: int64(1),
+					},
+					&ast.IntegerLiteral{
+						Token: token.New(token.INT, "2"),
+						Value: int64(2),
+					},
+					&ast.IntegerLiteral{
+						Token: token.New(token.INT, "3"),
+						Value: int64(3),
+					},
+				},
+			},
+			Body: &ast.BlockStatement{
+				Token: token.New(token.LBRACE, "{"),
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Token: token.New(token.IDENT, "sayHello"),
+						Expression: &ast.CallExpression{
+							Token: token.New(token.LPAREN, "("),
+							Function: &ast.Identifier{
+								Token: token.New(token.IDENT, "sayHello"),
+								Value: "sayHello",
+							},
+							Arguments: []ast.Expression{},
+						},
+					},
+				},
+			},
+		}},
+		{`for key, value in {"name": "Makram", "age": 27} { sayHello(); }`, &ast.ForEachStatement{
+			Token: token.New(token.FOR, "for"),
+			Identifiers: []*ast.Identifier{
+				{
+					Token: token.New(token.IDENT, "key"),
+					Value: "key",
+				},
+				{
+					Token: token.New(token.IDENT, "value"),
+					Value: "value",
+				},
+			},
+			Collection: &ast.HashLiteral{
+				Token: token.New(token.LBRACE, "{"),
+				Pairs: map[ast.Expression]ast.Expression{
+					&ast.StringLiteral{
+						Token: token.New(token.STRING, "name"),
+						Value: "name",
+					}: &ast.StringLiteral{
+						Token: token.New(token.STRING, "Makram"),
+						Value: "Makram",
+					},
+					&ast.StringLiteral{
+						Token: token.New(token.STRING, "age"),
+						Value: "age",
+					}: &ast.IntegerLiteral{
+						Token: token.New(token.INT, "27"),
+						Value: 27,
+					},
+				},
+			},
+			Body: &ast.BlockStatement{
+				Token: token.New(token.LBRACE, "{"),
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Token: token.New(token.IDENT, "sayHello"),
+						Expression: &ast.CallExpression{
+							Token: token.New(token.LPAREN, "("),
+							Function: &ast.Identifier{
+								Token: token.New(token.IDENT, "sayHello"),
+								Value: "sayHello",
+							},
+							Arguments: []ast.Expression{},
+						},
+					},
+				},
+			},
+		}},
+	}
+
+	for _, test := range testCases {
+		l := lexer.New(test.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		assert.Empty(t, p.Errors())
+		assert.IsType(t, &ast.ForEachStatement{}, program.Statements[0])
+		forEachStmt := program.Statements[0].(*ast.ForEachStatement)
+		assert.Equal(t, test.expected.Token, forEachStmt.Token)
+		assert.Equal(t, test.expected.Identifiers, forEachStmt.Identifiers)
+		assert.Equal(t, test.expected.Collection.String(), forEachStmt.Collection.String())
+		assert.Equal(t, test.expected.Body, forEachStmt.Body)
+	}
+}

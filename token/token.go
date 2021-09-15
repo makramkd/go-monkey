@@ -17,6 +17,9 @@ var keywords = map[string]Type{
 	"return": RETURN,
 	"null":   NULL,
 	"import": IMPORT,
+	"for":    FOR,
+	"in":     IN,
+	"break":  BREAK,
 }
 
 func New(tokType Type, literal string) Token {
@@ -95,4 +98,7 @@ const (
 	RETURN   = "RETURN"
 	NULL     = "NULL"
 	IMPORT   = "IMPORT"
+	FOR      = "FOR"
+	IN       = "IN"
+	BREAK    = "BREAK"
 )

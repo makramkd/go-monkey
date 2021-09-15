@@ -22,6 +22,7 @@ const (
 	ARRAY        ObjectType = "ARRAY"
 	BUILTIN      ObjectType = "BUILTIN"
 	HASH         ObjectType = "HASH"
+	BREAK        ObjectType = "BREAK"
 )
 
 type Object interface {
@@ -170,3 +171,8 @@ func (h *Hash) Inspect() string {
 	builder.WriteByte('}')
 	return builder.String()
 }
+
+type Break struct{}
+
+func (b *Break) Inspect() string  { return "break" }
+func (b *Break) Type() ObjectType { return BREAK }

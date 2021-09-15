@@ -12,7 +12,8 @@ var (
 	TRUE  = &object.Boolean{Value: true}
 	FALSE = &object.Boolean{Value: false}
 
-	NULL = &object.Null{}
+	NULL  = &object.Null{}
+	BREAK = &object.Break{}
 )
 
 func Eval(root ast.Node, env *object.Env) object.Object {
@@ -45,6 +46,13 @@ func Eval(root ast.Node, env *object.Env) object.Object {
 		// Evaluate the module without returning anything.
 		// This should load any exported symbols into the current environment.
 		Eval(loaded, env)
+	case *ast.ForEachStatement:
+		e := evalForEachStatement(node, env)
+		if isError(e) {
+			return e
+		}
+	case *ast.BreakStatement:
+		return evalBreakStatement(node, env)
 
 	// Expressions
 	case *ast.IntegerLiteral:
@@ -116,7 +124,7 @@ func evalBlockStatement(block *ast.BlockStatement, env *object.Env) object.Objec
 
 		if result != nil {
 			t := result.Type()
-			if t == object.RETURN_VALUE || t == object.ERROR {
+			if t == object.RETURN_VALUE || t == object.ERROR || t == object.BREAK {
 				return result
 			}
 		}
@@ -371,6 +379,66 @@ func evalArrayAccessExpression(left, index object.Object) object.Object {
 	}
 
 	return array.Values[int(idx.Value)]
+}
+
+func evalForEachStatement(forEach *ast.ForEachStatement, env *object.Env) object.Object {
+	// Evaluate collection first to see what kind of object we're working with
+	// i.e, a hash or an array.
+	collection := Eval(forEach.Collection, env)
+	if isError(collection) {
+		return collection
+	}
+
+	switch {
+	case collection.Type() == object.ARRAY && len(forEach.Identifiers) == 1:
+		// iterating over an array selecting object directly
+		array := collection.(*object.Array)
+		id := forEach.Identifiers[0]
+		for _, v := range array.Values {
+			newEnv := object.NewScopedEnv(env)
+			newEnv.Set(id.Value, v)
+			newEnv.SetExecutionContext(object.ExecutionContextLoop)
+			r := evalBlockStatement(forEach.Body, newEnv)
+			if isError(r) {
+				return r
+			}
+			if r != nil && r.Type() == object.BREAK {
+				break
+			}
+		}
+	case collection.Type() == object.HASH && len(forEach.Identifiers) == 2:
+		// iterating over a hash selecting keys and values
+		hash := collection.(*object.Hash)
+		key := forEach.Identifiers[0]
+		val := forEach.Identifiers[1]
+		for _, pair := range hash.Pairs {
+			newEnv := object.NewScopedEnv(env)
+			newEnv.Set(key.Value, pair.Key)
+			newEnv.Set(val.Value, pair.Value)
+			newEnv.SetExecutionContext(object.ExecutionContextLoop)
+			r := evalBlockStatement(forEach.Body, newEnv)
+			if isError(r) {
+				return r
+			}
+			if r != nil && r.Type() == object.BREAK {
+				break
+			}
+		}
+	default:
+		return newError("unsupported iteration type: %s and %d identifiers", collection.Type(), len(forEach.Identifiers))
+	}
+
+	return nil
+}
+
+func evalBreakStatement(breakStmt *ast.BreakStatement, env *object.Env) object.Object {
+	// Check the context we're in - we should only accept break when we're in
+	// a loop.
+	if env.GetExecutionContext() != object.ExecutionContextLoop {
+		return newError("break cannot be used outside a loop context")
+	}
+
+	return BREAK
 }
 
 func unwrapReturnValue(obj object.Object) object.Object {
