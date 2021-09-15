@@ -366,3 +366,34 @@ func (h *HashLiteral) String() string {
 	builder.WriteByte('}')
 	return builder.String()
 }
+
+type ForEachStatement struct {
+	Token       token.Token     // The 'for' token
+	Identifiers []*Identifier   // The variables to capture into
+	Collection  Expression      // The collection being looped over
+	Body        *BlockStatement // The block to execute
+}
+
+func (f *ForEachStatement) statementNode()       {}
+func (f *ForEachStatement) TokenLiteral() string { return f.Token.Literal }
+func (f *ForEachStatement) String() string {
+	builder := strings.Builder{}
+	builder.WriteString("for ")
+	ids := []string{}
+	for _, i := range f.Identifiers {
+		ids = append(ids, i.Value)
+	}
+	builder.WriteString(strings.Join(ids, ", "))
+	builder.WriteString("in ")
+	builder.WriteString(f.Collection.String())
+	builder.WriteString(f.Body.String())
+	return builder.String()
+}
+
+type BreakStatement struct {
+	Token token.Token // The 'break' token
+}
+
+func (b *BreakStatement) statementNode()       {}
+func (b *BreakStatement) TokenLiteral() string { return b.Token.Literal }
+func (b *BreakStatement) String() string       { return b.Token.Literal }

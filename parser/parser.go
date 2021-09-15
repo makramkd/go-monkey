@@ -64,8 +64,79 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseReturnStatement()
 	case token.IMPORT:
 		return p.parseImportStatement()
+	case token.FOR:
+		return p.parseForEachStatement()
+	case token.BREAK:
+		return p.parseBreakStatement()
 	default:
 		return p.parseExpressionStatement()
+	}
+}
+
+func (p *Parser) parseBreakStatement() *ast.BreakStatement {
+	stmt := &ast.BreakStatement{Token: p.curToken}
+
+	if !p.expectPeek(token.SEMICOLON) {
+		return nil
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseForEachStatement() *ast.ForEachStatement {
+	stmt := &ast.ForEachStatement{Token: p.curToken}
+
+	stmt.Identifiers = p.parseForIdentifiers()
+
+	// The 'in' token is required.
+	if !p.expectPeek(token.IN) {
+		return nil
+	}
+
+	p.nextToken()
+
+	stmt.Collection = p.parseForCollection()
+
+	p.nextToken()
+
+	stmt.Body = p.parseBlockStatement()
+
+	return stmt
+}
+
+func (p *Parser) parseForIdentifiers() []*ast.Identifier {
+	// Comma separated list of identifiers, similar to a function.
+	ids := []*ast.Identifier{}
+
+	// Need at least one identifier
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+
+	ids = append(ids, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken()
+		if !p.expectPeek(token.IDENT) {
+			return nil
+		}
+
+		ids = append(ids, &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal})
+	}
+
+	return ids
+}
+
+func (p *Parser) parseForCollection() ast.Expression {
+	switch p.curToken.T {
+	case token.LBRACE:
+		return p.parseHashLiteral()
+	case token.LBRACK:
+		return p.parseArrayLiteral()
+	case token.IDENT:
+		return p.parseIdentifier()
+	default:
+		return nil
 	}
 }
 
